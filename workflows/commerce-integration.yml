@@ -1,0 +1,35 @@
+name: commerce-integration
+trigger:
+  type: manual
+  systems:
+    - n8n
+    - internal-scheduler
+input:
+  required:
+    - product_catalog
+    - affiliate_program_details
+    - target_audience
+steps:
+  - id: generate-photography
+    action: generate-product-photography
+    route: /api/routes/generate-image
+    outputs:
+      - angles
+      - contexts
+  - id: generate-lifestyle-video
+    action: generate-product-videos
+    route: /api/routes/generate-video
+  - id: create-ad-variants
+    action: generate-copy-and-cta-variants
+  - id: publish-affiliate-posts
+    action: post-to-social-channels
+    output: live-affiliate-links
+  - id: track-conversions
+    action: sync-commerce-metrics
+    output: affiliate-campaign-results
+output:
+  artifact: affiliate-campaign-results
+  includes:
+    - product-media
+    - ad-variants
+    - revenue-metrics
