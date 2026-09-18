@@ -83,13 +83,15 @@ export const JobQuerySchema = z.object({
 export const CreditBudgetSchema = z.object({
   projectId: z.string().min(1),
   workflowType: WorkflowTypeSchema.optional(),
+  model: HiggsfieldModelSchema,
+  batchCount: z.number().int().min(1).max(50).optional(),
+  shotCount: z.number().int().min(1).max(100).optional(),
   maxCredits: z.number().positive(),
 });
 
 export const MediaLibraryQuerySchema = z.object({
   projectId: z.string().min(1).optional(),
   mediaType: MediaTypeSchema.optional(),
-  modelUsed: HiggsfieldModelSchema.optional(),
   fromDate: z.string().datetime().optional(),
   toDate: z.string().datetime().optional(),
   search: z.string().min(1).optional(),

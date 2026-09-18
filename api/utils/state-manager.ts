@@ -47,14 +47,23 @@ export class SupabaseStateManager {
   }
 
   async updateGenerationStatus(jobId: string, status: GenerationStatus, updates: Partial<GenerationRecord> = {}): Promise<void> {
-    const payload: Record<string, unknown> = {
-      status,
-      credits_used: updates.creditsUsed,
-      media_url: updates.mediaUrl,
-      error_message: updates.errorMessage,
-      retry_count: updates.retryCount,
-      completed_at: status === 'complete' || status === 'failed' ? new Date().toISOString() : null,
-    };
+    const payload: Record<string, unknown> = { status };
+
+    if (updates.creditsUsed !== undefined) {
+      payload.credits_used = updates.creditsUsed;
+    }
+    if (updates.mediaUrl !== undefined) {
+      payload.media_url = updates.mediaUrl;
+    }
+    if (updates.errorMessage !== undefined) {
+      payload.error_message = updates.errorMessage;
+    }
+    if (updates.retryCount !== undefined) {
+      payload.retry_count = updates.retryCount;
+    }
+    if (status === 'complete' || status === 'failed') {
+      payload.completed_at = new Date().toISOString();
+    }
 
     const { error } = await this.client.from('generations').update(payload).eq('job_id', jobId);
     if (error) {

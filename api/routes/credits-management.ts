@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { authorizeRequest } from '../middleware/auth';
 import { auditLogger } from '../utils/audit-logger';
 import { estimateCredits, HiggsfieldClient } from '../utils/higgsfield-client';
@@ -15,7 +14,7 @@ function json(body: unknown, status = 200): Response {
 }
 
 export default async function handler(request: Request): Promise<Response> {
-  const auth = await authorizeRequest(request, ['credits:read']);
+  const auth = await authorizeRequest(request, request.method === 'POST' ? ['credits:manage'] : ['credits:read']);
   if (!auth.authorized) {
     return json({ error: auth.message }, auth.status);
   }
@@ -47,13 +46,15 @@ export default async function handler(request: Request): Promise<Response> {
       }
 
       const balance = await client.getAccountBalance();
-      const projectedReserve = payload.data.workflowType
-        ? estimateCredits(payload.data.workflowType === 'film-production' ? 'cinema-studio' : 'gpt-image-2')
-        : 0;
+      const projectedReserve = estimateCredits(
+        payload.data.model,
+        payload.data.batchCount,
+        payload.data.shotCount,
+      );
       const withinBudget = projectedReserve <= payload.data.maxCredits && projectedReserve <= balance;
 
       await stateManager.recordCreditTransaction({
-        id: randomUUID(),
+        id: crypto.randomUUID(),
         accountId: process.env.HIGGSFIELD_ACCOUNT_ID ?? 'default-account',
         amount: projectedReserve,
         jobId: null,

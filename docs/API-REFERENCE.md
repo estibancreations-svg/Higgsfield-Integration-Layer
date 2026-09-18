@@ -44,7 +44,6 @@ Returns current job lifecycle metadata, progress, render estimates, and complete
 Query parameters:
 - `projectId?`
 - `mediaType?`
-- `modelUsed?`
 - `fromDate?` ISO timestamp
 - `toDate?` ISO timestamp
 - `search?`
@@ -55,6 +54,14 @@ Returns Higgsfield account balance and low-credit alert status.
 
 ### `POST /api/routes/credits-management`
 Checks a workflow/project budget cap and records an auditable credit transaction.
+
+**Body**
+- `projectId: string`
+- `model: gpt-image-2 | nano-banana | flux | seedance | kling | cinema-studio`
+- `maxCredits: number`
+- `workflowType?: book-creation | film-production | social-campaigns | commerce-integration | ad-hoc`
+- `batchCount?: number`
+- `shotCount?: number`
 
 ## Error Codes
 

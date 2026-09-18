@@ -31,7 +31,7 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   const rateLimitKey = `${auth.subject}:${payload.data.projectId}:video`;
-  const rateLimit = enforceRateLimit({ key: rateLimitKey, concurrentLimit: 2 });
+  const rateLimit = await enforceRateLimit({ key: rateLimitKey, concurrentLimit: 2 });
   if (!rateLimit.allowed) {
     return json({ error: 'Rate limit exceeded or video queue full.', retryAfterSeconds: rateLimit.retryAfterSeconds }, 429);
   }
@@ -115,6 +115,6 @@ export default async function handler(request: Request): Promise<Response> {
 
     return json({ error: error instanceof Error ? error.message : 'Video generation failed.' }, 500);
   } finally {
-    releaseConcurrency(rateLimitKey);
+    await releaseConcurrency(rateLimitKey, rateLimit.leaseToken);
   }
 }

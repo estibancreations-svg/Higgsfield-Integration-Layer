@@ -51,7 +51,18 @@ create table if not exists public.job_state (
   generation_parameters jsonb not null default '{}'::jsonb
 );
 
+create table if not exists public.rate_limit_events (
+  id uuid primary key default gen_random_uuid(),
+  limiter_key text not null,
+  event_type text not null check (event_type in ('request', 'concurrency')),
+  lease_token uuid unique,
+  created_at timestamptz not null default timezone('utc', now()),
+  expires_at timestamptz not null
+);
+
 create index if not exists generations_project_status_idx on public.generations (project_id, status, created_at desc);
 create index if not exists media_library_project_type_idx on public.media_library (project_association, media_type, created_at desc);
 create index if not exists credit_transactions_account_date_idx on public.credit_transactions (account_id, transaction_date desc);
 create index if not exists job_state_status_idx on public.job_state (status, estimated_completion);
+create index if not exists rate_limit_events_lookup_idx on public.rate_limit_events (limiter_key, event_type, created_at desc);
+create index if not exists rate_limit_events_expiry_idx on public.rate_limit_events (limiter_key, expires_at);

@@ -26,7 +26,6 @@ export default async function handler(request: Request): Promise<Response> {
   const query = MediaLibraryQuerySchema.safeParse({
     projectId: url.searchParams.get('projectId') ?? undefined,
     mediaType: url.searchParams.get('mediaType') ?? undefined,
-    modelUsed: url.searchParams.get('modelUsed') ?? undefined,
     fromDate: url.searchParams.get('fromDate') ?? undefined,
     toDate: url.searchParams.get('toDate') ?? undefined,
     search: url.searchParams.get('search') ?? undefined,

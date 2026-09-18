@@ -31,7 +31,7 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   const rateLimitKey = `${auth.subject}:${payload.data.projectId}:image`;
-  const rateLimit = enforceRateLimit({ key: rateLimitKey });
+  const rateLimit = await enforceRateLimit({ key: rateLimitKey });
   if (!rateLimit.allowed) {
     return json({ error: 'Rate limit exceeded or concurrency queue full.', retryAfterSeconds: rateLimit.retryAfterSeconds }, 429);
   }
@@ -108,6 +108,6 @@ export default async function handler(request: Request): Promise<Response> {
 
     return json({ error: error instanceof Error ? error.message : 'Image generation failed.' }, 500);
   } finally {
-    releaseConcurrency(rateLimitKey);
+    await releaseConcurrency(rateLimitKey, rateLimit.leaseToken);
   }
 }

@@ -62,7 +62,6 @@ export default async function handler(request: Request): Promise<Response> {
       creditsUsed: job.creditsReserved,
       mediaUrl: job.media[0]?.mediaUrl ?? null,
       errorMessage: job.status === 'failed' ? 'Higgsfield job failed.' : null,
-      retryCount: 0,
     });
 
     const response: JobStatusResponse = {

@@ -16,11 +16,22 @@ interface JwtPayload {
 }
 
 const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
 
 function base64UrlDecode(input: string): string {
   const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
   const padding = '='.repeat((4 - (normalized.length % 4 || 4)) % 4);
-  return Buffer.from(normalized + padding, 'base64').toString('utf8');
+  const binary = atob(normalized + padding);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return textDecoder.decode(bytes);
+}
+
+function base64UrlToArrayBuffer(input: string): ArrayBuffer {
+  const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = '='.repeat((4 - (normalized.length % 4 || 4)) % 4);
+  const binary = atob(normalized + padding);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 }
 
 async function verifyHs256Jwt(token: string, secret: string): Promise<JwtPayload | null> {
@@ -42,7 +53,7 @@ async function verifyHs256Jwt(token: string, secret: string): Promise<JwtPayload
     ['verify'],
   );
 
-  const signature = Buffer.from(signaturePart.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+  const signature = base64UrlToArrayBuffer(signaturePart);
   const verified = await crypto.subtle.verify(
     'HMAC',
     key,
