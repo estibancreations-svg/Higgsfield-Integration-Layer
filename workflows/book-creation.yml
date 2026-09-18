@@ -1,0 +1,35 @@
+name: book-creation
+trigger:
+  type: manual
+  systems:
+    - n8n
+    - internal-scheduler
+input:
+  required:
+    - manuscript_text
+    - character_descriptions
+    - visual_style
+steps:
+  - id: parse-chapters
+    action: parse-manuscript
+    output: chapter_scene_descriptions
+  - id: generate-illustrations
+    action: generate-images
+    route: /api/routes/generate-image
+    model_preferences:
+      - gpt-image-2
+      - nano-banana
+      - flux
+    strategy: batch-per-scene
+  - id: create-mood-board
+    action: generate-soul-id-consistency-board
+    output: style_reference_pack
+  - id: compile-layout
+    action: compose-book-layout
+    output: final_book_project
+output:
+  artifact: completed-book-project
+  includes:
+    - illustration-set
+    - mood-board
+    - layout-package

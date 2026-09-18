@@ -1,0 +1,35 @@
+name: social-campaigns
+trigger:
+  type: manual
+  systems:
+    - n8n
+    - internal-scheduler
+input:
+  required:
+    - campaign_brief
+    - brand_or_product
+    - platform
+steps:
+  - id: generate-hooks
+    action: generate-image-variations
+    route: /api/routes/generate-image
+    count: 5-10
+  - id: generate-short-clips
+    action: generate-short-videos
+    route: /api/routes/generate-video
+    duration_range_seconds: 15-60
+  - id: auto-post
+    action: publish-to-platforms
+    platforms:
+      - TikTok
+      - Instagram
+      - YouTube
+  - id: track-performance
+    action: sync-engagement-metrics
+    output: performance_dashboard
+output:
+  artifact: live-social-campaign
+  includes:
+    - media-variants
+    - scheduled-posts
+    - performance-dashboard

@@ -1,0 +1,40 @@
+name: film-production
+trigger:
+  type: manual
+  systems:
+    - n8n
+    - internal-scheduler
+input:
+  required:
+    - script
+    - shot_list
+    - character_soul_ids
+    - visual_style
+steps:
+  - id: generate-keyframes
+    action: generate-images
+    route: /api/routes/generate-image
+    model_preferences:
+      - gpt-image-2
+      - flux
+  - id: generate-video-clips
+    action: generate-videos
+    route: /api/routes/generate-video
+    model_preferences:
+      - cinema-studio
+      - seedance
+      - kling
+  - id: orchestrate-sequence
+    action: assemble-multi-shot-sequence
+    output: sequence_timeline
+  - id: apply-vfx
+    action: apply-motion-and-vfx-presets
+  - id: compile-final-video
+    action: render-final-film
+    output: finished-film-sequence
+output:
+  artifact: finished-film-sequence
+  includes:
+    - keyframes
+    - shot-clips
+    - final-render
