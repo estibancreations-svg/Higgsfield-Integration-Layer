@@ -59,6 +59,7 @@ export interface JobStateRecord {
   estimatedCompletion: string | null;
   errorState: string | null;
   triggeredBy: JobTriggerSystem;
+  limiterKey: string | null;
   generationParameters: Record<string, unknown>;
   concurrencyLeaseToken: string | null;
 }

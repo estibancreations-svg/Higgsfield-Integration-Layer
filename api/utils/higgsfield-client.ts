@@ -48,7 +48,7 @@ export class HiggsfieldClient {
 
     const balance = await this.getAccountBalance();
     if (balance < minimum) {
-      throw new Error(`Insufficient Higgsfield credits. Current balance ${balance}, minimum required ${minimum}.`);
+      throw new Error('Insufficient Higgsfield credits for this generation request.');
     }
   }
 

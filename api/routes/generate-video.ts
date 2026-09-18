@@ -65,6 +65,7 @@ export default async function handler(request: Request): Promise<Response> {
       estimatedCompletion: job.estimatedCompletion,
       errorState: null,
       triggeredBy: payload.data.triggeredBy,
+      limiterKey: rateLimitKey,
       generationParameters: {
         ...payload.data,
         renderDurationHint: payload.data.options?.renderDurationSeconds ?? payload.data.shotPlan?.reduce((sum, shot) => sum + (shot.durationSeconds ?? 0), 0) ?? null,
@@ -116,7 +117,7 @@ export default async function handler(request: Request): Promise<Response> {
     auditLogger.log({
       action: 'generate-video',
       actor: auth.subject,
-      system: payload.data.triggeredBy,
+      system: payload.success ? payload.data.triggeredBy : 'unknown',
       status: 'failure',
       metadata: { error: error instanceof Error ? error.message : 'unknown error' },
     });

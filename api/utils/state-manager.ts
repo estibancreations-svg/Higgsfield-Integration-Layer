@@ -103,6 +103,7 @@ export class SupabaseStateManager {
       estimated_completion: job.estimatedCompletion,
       error_state: job.errorState,
       triggered_by: job.triggeredBy,
+      limiter_key: job.limiterKey,
       generation_parameters: job.generationParameters,
       concurrency_lease_token: job.concurrencyLeaseToken,
     });
@@ -136,6 +137,7 @@ export class SupabaseStateManager {
       estimatedCompletion: data.estimated_completion ? String(data.estimated_completion) : null,
       errorState: data.error_state ? String(data.error_state) : null,
       triggeredBy: data.triggered_by as JobStateRecord['triggeredBy'],
+      limiterKey: data.limiter_key ? String(data.limiter_key) : null,
       generationParameters: (data.generation_parameters ?? {}) as Record<string, unknown>,
       concurrencyLeaseToken: data.concurrency_lease_token ? String(data.concurrency_lease_token) : null,
     };

@@ -48,9 +48,13 @@ create table if not exists public.job_state (
   estimated_completion timestamptz,
   error_state text,
   triggered_by text not null default 'unknown',
+  limiter_key text,
   generation_parameters jsonb not null default '{}'::jsonb,
   concurrency_lease_token uuid
 );
+
+alter table if exists public.job_state
+  add column if not exists limiter_key text;
 
 alter table if exists public.job_state
   add column if not exists concurrency_lease_token uuid;

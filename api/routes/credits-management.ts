@@ -60,7 +60,7 @@ export default async function handler(request: Request): Promise<Response> {
         jobId: null,
         status: withinBudget ? 'pending' : 'failed',
         transactionDate: new Date().toISOString(),
-        balanceAfter: Math.max(0, balance - projectedReserve),
+        balanceAfter: withinBudget ? Math.max(0, balance - projectedReserve) : balance,
         description: `Budget check for ${payload.data.projectId}${payload.data.workflowType ? ` (${payload.data.workflowType})` : ''}`,
       });
 

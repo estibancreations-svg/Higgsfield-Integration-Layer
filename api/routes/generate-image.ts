@@ -65,6 +65,7 @@ export default async function handler(request: Request): Promise<Response> {
       estimatedCompletion: job.estimatedCompletion,
       errorState: null,
       triggeredBy: payload.data.triggeredBy,
+      limiterKey: rateLimitKey,
       generationParameters: payload.data,
       concurrencyLeaseToken: rateLimit.leaseToken ?? null,
     });
@@ -109,7 +110,7 @@ export default async function handler(request: Request): Promise<Response> {
     auditLogger.log({
       action: 'generate-image',
       actor: auth.subject,
-      system: payload.data.triggeredBy,
+      system: payload.success ? payload.data.triggeredBy : 'unknown',
       status: 'failure',
       metadata: { error: error instanceof Error ? error.message : 'unknown error' },
     });

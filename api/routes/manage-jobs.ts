@@ -50,7 +50,7 @@ export default async function handler(request: Request): Promise<Response> {
     const isTerminal = job.status === 'complete' || job.status === 'failed';
 
     if (isTerminal && existingState?.concurrencyLeaseToken) {
-      await releaseConcurrency(jobId, existingState.concurrencyLeaseToken);
+      await releaseConcurrency(existingState.limiterKey ?? jobId, existingState.concurrencyLeaseToken);
     }
 
     if (existingState) {
@@ -71,6 +71,7 @@ export default async function handler(request: Request): Promise<Response> {
         estimatedCompletion: job.estimatedCompletion,
         errorState: job.status === 'failed' ? 'remote-job-failed' : null,
         triggeredBy: 'unknown',
+        limiterKey: null,
         generationParameters: job.raw,
         concurrencyLeaseToken: null,
       });
