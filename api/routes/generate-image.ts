@@ -36,10 +36,13 @@ export default async function handler(request: Request): Promise<Response> {
     return json({ error: 'Rate limit exceeded or concurrency queue full.', retryAfterSeconds: rateLimit.retryAfterSeconds }, 429);
   }
 
+  let remoteJobStarted = false;
+
   try {
     const client = HiggsfieldClient.fromEnv();
     const stateManager = SupabaseStateManager.fromEnv();
     const job = await client.generateImage(payload.data);
+    remoteJobStarted = true;
     const generationRecord = await stateManager.createGeneration({
       projectId: payload.data.projectId,
       workflowType: payload.data.workflowType,
@@ -63,6 +66,7 @@ export default async function handler(request: Request): Promise<Response> {
       errorState: null,
       triggeredBy: payload.data.triggeredBy,
       generationParameters: payload.data,
+      concurrencyLeaseToken: rateLimit.leaseToken ?? null,
     });
 
     if (job.media.length) {
@@ -98,6 +102,10 @@ export default async function handler(request: Request): Promise<Response> {
 
     return json(response, 202);
   } catch (error) {
+    if (!remoteJobStarted) {
+      await releaseConcurrency(rateLimitKey, rateLimit.leaseToken);
+    }
+
     auditLogger.log({
       action: 'generate-image',
       actor: auth.subject,
@@ -107,7 +115,5 @@ export default async function handler(request: Request): Promise<Response> {
     });
 
     return json({ error: error instanceof Error ? error.message : 'Image generation failed.' }, 500);
-  } finally {
-    await releaseConcurrency(rateLimitKey, rateLimit.leaseToken);
   }
 }

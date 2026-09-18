@@ -60,6 +60,7 @@ export interface JobStateRecord {
   errorState: string | null;
   triggeredBy: JobTriggerSystem;
   generationParameters: Record<string, unknown>;
+  concurrencyLeaseToken: string | null;
 }
 
 export interface MediaMetadata {

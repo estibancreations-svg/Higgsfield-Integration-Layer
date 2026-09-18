@@ -4,7 +4,7 @@
 
 All routes require either:
 - `x-api-key: <INTEGRATION_API_KEY>`
-- `Authorization: ****** Dashboard JWT>` signed with `CEO_DASHBOARD_JWT_SECRET`
+- A standard bearer token `Authorization` header carrying a CEO Dashboard JWT signed with `CEO_DASHBOARD_JWT_SECRET`
 
 ## Routes
 

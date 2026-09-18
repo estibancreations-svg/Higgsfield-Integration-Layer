@@ -36,6 +36,7 @@ function getWindowConfig(options: { limit?: number; windowMs?: number; concurren
     limit: options.limit ?? Number(process.env.DEFAULT_RATE_LIMIT ?? 30),
     windowMs: options.windowMs ?? Number(process.env.DEFAULT_RATE_LIMIT_WINDOW_MS ?? 60_000),
     concurrentLimit: options.concurrentLimit ?? Number(process.env.DEFAULT_MAX_CONCURRENT_JOBS ?? 5),
+    leaseMs: Number(process.env.DEFAULT_CONCURRENCY_LEASE_MS ?? 3_600_000),
   };
 }
 
@@ -53,80 +54,42 @@ async function enforceSupabaseRateLimit(
   client: SupabaseClient,
   options: { key: string; limit?: number; windowMs?: number; concurrentLimit?: number },
 ): Promise<RateLimitResult> {
-  const { limit, windowMs, concurrentLimit } = getWindowConfig(options);
+  const { limit, windowMs, concurrentLimit, leaseMs } = getWindowConfig(options);
   const now = Date.now();
-  const nowIso = new Date(now).toISOString();
-  const windowStartIso = new Date(now - windowMs).toISOString();
-  const expiresAt = new Date(now + windowMs).toISOString();
+  const { data, error } = await client.rpc('acquire_rate_limit_lease', {
+    p_limiter_key: options.key,
+    p_limit: limit,
+    p_window_ms: windowMs,
+    p_concurrent_limit: concurrentLimit,
+    p_lease_ms: leaseMs,
+  });
 
-  await client.from('rate_limit_events').delete().lt('expires_at', nowIso).eq('limiter_key', options.key);
-
-  const [{ count: requestCount, error: requestError }, { count: activeLeases, error: concurrencyError }] = await Promise.all([
-    client
-      .from('rate_limit_events')
-      .select('*', { count: 'exact', head: true })
-      .eq('limiter_key', options.key)
-      .eq('event_type', 'request')
-      .gte('created_at', windowStartIso),
-    client
-      .from('rate_limit_events')
-      .select('*', { count: 'exact', head: true })
-      .eq('limiter_key', options.key)
-      .eq('event_type', 'concurrency')
-      .gt('expires_at', nowIso),
-  ]);
-
-  if (requestError || concurrencyError) {
-    throw new Error(`Rate limit lookup failed: ${requestError?.message ?? concurrencyError?.message}`);
+  if (error) {
+    throw new Error(`Rate limit lookup failed: ${error.message}`);
   }
 
-  if ((activeLeases ?? 0) >= concurrentLimit) {
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) {
+    throw new Error('Rate limit function returned no result.');
+  }
+
+  if (!row.allowed) {
     return {
       allowed: false,
       limit,
-      remaining: 0,
-      resetAt: now + windowMs,
-      retryAfterSeconds: Math.ceil(windowMs / 1000),
+      remaining: Number(row.remaining ?? 0),
+      resetAt: new Date(row.reset_at ?? now + windowMs).getTime(),
+      retryAfterSeconds: Number(row.retry_after_seconds ?? Math.ceil(windowMs / 1000)),
       backend: 'supabase',
     };
-  }
-
-  if ((requestCount ?? 0) >= limit) {
-    return {
-      allowed: false,
-      limit,
-      remaining: 0,
-      resetAt: now + windowMs,
-      retryAfterSeconds: Math.ceil(windowMs / 1000),
-      backend: 'supabase',
-    };
-  }
-
-  const leaseToken = crypto.randomUUID();
-  const { error: insertError } = await client.from('rate_limit_events').insert([
-    {
-      limiter_key: options.key,
-      event_type: 'request',
-      expires_at: expiresAt,
-    },
-    {
-      limiter_key: options.key,
-      event_type: 'concurrency',
-      lease_token: leaseToken,
-      expires_at: expiresAt,
-    },
-  ]);
-
-  if (insertError) {
-    throw new Error(`Rate limit write failed: ${insertError.message}`);
   }
 
   return {
     allowed: true,
     limit,
-    remaining: Math.max(0, limit - ((requestCount ?? 0) + 1)),
-    resetAt: now + windowMs,
-    leaseToken,
+    remaining: Number(row.remaining ?? Math.max(0, limit - 1)),
+    resetAt: new Date(row.reset_at ?? now + windowMs).getTime(),
+    leaseToken: typeof row.lease_token === 'string' ? row.lease_token : undefined,
     backend: 'supabase',
   };
 }
@@ -192,7 +155,7 @@ function enforceInMemoryRateLimit(options: {
 export async function releaseConcurrency(key: string, leaseToken?: string): Promise<void> {
   const client = getSupabaseClient();
   if (client && leaseToken) {
-    await client.from('rate_limit_events').delete().eq('lease_token', leaseToken).eq('event_type', 'concurrency');
+    await client.rpc('release_rate_limit_lease', { p_lease_token: leaseToken });
     return;
   }
 

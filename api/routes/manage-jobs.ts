@@ -1,4 +1,5 @@
 import { authorizeRequest } from '../middleware/auth';
+import { releaseConcurrency } from '../middleware/rate-limit';
 import { auditLogger } from '../utils/audit-logger';
 import { HiggsfieldClient } from '../utils/higgsfield-client';
 import { SupabaseStateManager } from '../utils/state-manager';
@@ -45,23 +46,40 @@ export default async function handler(request: Request): Promise<Response> {
       return json({ error: 'Unable to resolve a job from the provided generationId or jobId.' }, 404);
     }
     const job = await client.getJob(jobId);
+    const existingState = await stateManager.getJobState(jobId);
+    const isTerminal = job.status === 'complete' || job.status === 'failed';
 
-    await stateManager.upsertJobState({
-      jobId,
-      higgsfieldJobId: job.jobId,
-      status: job.status,
-      progressPercent: job.progressPercent,
-      startedAt: new Date().toISOString(),
-      estimatedCompletion: job.estimatedCompletion,
-      errorState: job.status === 'failed' ? 'remote-job-failed' : null,
-      triggeredBy: 'unknown',
-      generationParameters: job.raw,
-    });
+    if (isTerminal && existingState?.concurrencyLeaseToken) {
+      await releaseConcurrency(jobId, existingState.concurrencyLeaseToken);
+    }
+
+    if (existingState) {
+      await stateManager.updateJobState(jobId, {
+        status: job.status,
+        progressPercent: job.progressPercent,
+        estimatedCompletion: job.estimatedCompletion,
+        ...(isTerminal ? { errorState: job.status === 'failed' ? 'remote-job-failed' : null } : {}),
+        ...(isTerminal && existingState.concurrencyLeaseToken ? { concurrencyLeaseToken: null } : {}),
+      });
+    } else {
+      await stateManager.upsertJobState({
+        jobId,
+        higgsfieldJobId: job.jobId,
+        status: job.status,
+        progressPercent: job.progressPercent,
+        startedAt: new Date().toISOString(),
+        estimatedCompletion: job.estimatedCompletion,
+        errorState: job.status === 'failed' ? 'remote-job-failed' : null,
+        triggeredBy: 'unknown',
+        generationParameters: job.raw,
+        concurrencyLeaseToken: null,
+      });
+    }
 
     await stateManager.updateGenerationStatus(jobId, job.status, {
       creditsUsed: job.creditsReserved,
-      mediaUrl: job.media[0]?.mediaUrl ?? null,
-      errorMessage: job.status === 'failed' ? 'Higgsfield job failed.' : null,
+      ...(job.media[0]?.mediaUrl ? { mediaUrl: job.media[0].mediaUrl } : {}),
+      ...(isTerminal ? { errorMessage: job.status === 'failed' ? 'Higgsfield job failed.' : null } : {}),
     });
 
     const response: JobStatusResponse = {

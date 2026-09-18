@@ -104,10 +104,66 @@ export class SupabaseStateManager {
       error_state: job.errorState,
       triggered_by: job.triggeredBy,
       generation_parameters: job.generationParameters,
+      concurrency_lease_token: job.concurrencyLeaseToken,
     });
 
     if (error) {
       throw new Error(`Failed to upsert job state: ${error.message}`);
+    }
+  }
+
+  async getJobState(jobId: string): Promise<JobStateRecord | null> {
+    const { data, error } = await this.client
+      .from('job_state')
+      .select('*')
+      .eq('job_id', jobId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to retrieve job state: ${error.message}`);
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    return {
+      jobId: String(data.job_id),
+      higgsfieldJobId: String(data.higgsfield_job_id),
+      status: data.status as JobStateRecord['status'],
+      progressPercent: Number(data.progress_percent ?? 0),
+      startedAt: String(data.started_at),
+      estimatedCompletion: data.estimated_completion ? String(data.estimated_completion) : null,
+      errorState: data.error_state ? String(data.error_state) : null,
+      triggeredBy: data.triggered_by as JobStateRecord['triggeredBy'],
+      generationParameters: (data.generation_parameters ?? {}) as Record<string, unknown>,
+      concurrencyLeaseToken: data.concurrency_lease_token ? String(data.concurrency_lease_token) : null,
+    };
+  }
+
+  async updateJobState(jobId: string, updates: {
+    status: JobStateRecord['status'];
+    progressPercent: number;
+    estimatedCompletion: string | null;
+    errorState?: string | null;
+    concurrencyLeaseToken?: string | null;
+  }): Promise<void> {
+    const payload: Record<string, unknown> = {
+      status: updates.status,
+      progress_percent: updates.progressPercent,
+      estimated_completion: updates.estimatedCompletion,
+    };
+
+    if (updates.errorState !== undefined) {
+      payload.error_state = updates.errorState;
+    }
+    if (updates.concurrencyLeaseToken !== undefined) {
+      payload.concurrency_lease_token = updates.concurrencyLeaseToken;
+    }
+
+    const { error } = await this.client.from('job_state').update(payload).eq('job_id', jobId);
+    if (error) {
+      throw new Error(`Failed to update job state: ${error.message}`);
     }
   }
 
