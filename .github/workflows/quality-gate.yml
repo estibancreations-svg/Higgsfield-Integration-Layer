@@ -1,0 +1,40 @@
+name: Quality Gate
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: quality-gate-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Repository integrity and offline syntax
+        run: python scripts/quality_gate.py
+      - name: Install application dependencies
+        run: npm ci
+      - name: Build application
+        run: npm run build
+      - name: Typecheck adapter
+        run: npm run typecheck
+      - name: Preserve commit-specific evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gate-${{ github.sha }}
+          path: quality-gate-evidence.json
+          if-no-files-found: error

@@ -1,0 +1,16 @@
+{
+  "repository": "estibancreations-svg/Higgsfield-Integration-Layer",
+  "scope": "repository integrity plus applicable build or offline production tests",
+  "required_files": [
+    "README.md",
+    "schemas/validation.ts",
+    "api/utils/higgsfield-client.ts",
+    "package.json"
+  ],
+  "jsonc_files": [
+    "tsconfig.json",
+    "tsconfig.app.json",
+    "tsconfig.node.json",
+    "deno.json"
+  ]
+}
